@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const multer = require('multer');
 const crypto = require('crypto');
-const { findStaticDir } = require('./static-helper');
+const path = require('path');
 
 const app = express();
 app.use(helmet());
@@ -123,7 +123,7 @@ app.get('/files/:id', (req, res) => {
 });
 
 // --- Static: keep your original frontend untouched ---
-const STATIC_DIR = findStaticDir(path.join(__dirname, '..')); // project root
+const STATIC_DIR = path.join(__dirname, 'public'); // project root
 app.use(express.static(STATIC_DIR));
 app.get('/', (req, res) => res.sendFile(path.join(STATIC_DIR, 'index.html')));
 app.get('*', (req, res, next) => {
