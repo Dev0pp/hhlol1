@@ -7,7 +7,6 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const multer = require('multer');
 const crypto = require('crypto');
-const path = require('path');
 
 const app = express();
 app.use(helmet());
