@@ -40,6 +40,7 @@ const upload = multer({
   storage,
   fileFilter: (_, file, cb) => cb(null, file.mimetype === 'application/pdf')
 });
+app.use('/uploads', express.static(STORAGE_DIR));
 
 // API: create/update certificate
 app.post('/api/certificates', upload.single('pdf'), (req, res) => {
@@ -119,6 +120,64 @@ app.get('/files/:id', (req, res) => {
   } catch (e) {
     res.status(500).send('Server error');
   }
+});
+// === توافق مع واجهة dashboard.html ===
+
+// 1) قائمة المستخدمين للجدول
+app.get('/users', (req, res) => {
+  const recs = loadRecords();
+  // تُعيد: رقم الهوية، التسلسلي، واسم الملف لروابط "عرض"
+  const users = recs
+    .filter(r => r.active)
+    .map(r => ({ id: r.nationalId, serial: r.serial, file: r.pdfKey }));
+  res.json(users);
+});
+
+// 2) رفع ملف وربطه بالهوية/التسلسلي (نفس منطق /api/certificates لكن بأسماء الحقول في الواجهة)
+app.post('/upload', upload.single('file'), (req, res) => {
+  try {
+    const nationalId = normalize(req.body.id);
+    const serial     = normalize(req.body.serial);
+    if (!nationalId || !serial || !req.file) {
+      if (req.file) fs.unlinkSync(path.join(STORAGE_DIR, req.file.filename));
+      return res.status(400).json({ error: 'بيانات ناقصة' });
+    }
+    const recs = loadRecords();
+    const idx = recs.findIndex(r => r.nationalId === nationalId && r.serial === serial);
+    if (idx >= 0) {
+      if (recs[idx].pdfKey && recs[idx].pdfKey !== req.file.filename) {
+        const old = path.join(STORAGE_DIR, path.basename(recs[idx].pdfKey));
+        if (fs.existsSync(old)) fs.unlink(old, () => {});
+      }
+      recs[idx].pdfKey = req.file.filename;
+      recs[idx].active = true;
+      recs[idx].updatedAt = Date.now();
+    } else {
+      recs.push({ id: crypto.randomUUID(), nationalId, serial, pdfKey: req.file.filename, active: true, createdAt: Date.now() });
+    }
+    saveRecords(recs);
+    return res.json({ ok: true });
+  } catch (e) {
+    if (req.file) fs.unlink(path.join(STORAGE_DIR, req.file.filename), () => {});
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 3) حذف مستخدم (والملف إن وُجد)
+app.post('/delete-user', express.json(), (req, res) => {
+  const nationalId = normalize(req.body?.id);
+  const serial     = normalize(req.body?.serial);
+  if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const recs = loadRecords();
+  const idx  = recs.findIndex(r => r.nationalId === nationalId && r.serial === serial && r.active);
+  if (idx < 0) return res.json({ ok: true });
+
+  const fileAbs = path.join(STORAGE_DIR, path.basename(recs[idx].pdfKey || ''));
+  if (fs.existsSync(fileAbs)) fs.unlink(fileAbs, () => {});
+  recs.splice(idx, 1);
+  saveRecords(recs);
+  res.json({ ok: true });
 });
 
 // --- Static: keep your original frontend untouched ---
