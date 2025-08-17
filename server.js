@@ -125,7 +125,6 @@ app.get('/files/:id', (req, res) => {
 const STATIC_DIR = path.join(__dirname, 'public'); // project root
 app.use(express.static(STATIC_DIR));
 // محاولة ذكية لإيجاد الملفات لو المسارات داخل dashboard.html قديمة/مختلفة
-const fs = require('fs');
 
 app.use((req, res, next) => {
   // عالج طلبات الملفات فقط (GET بلا استعلامات API)
