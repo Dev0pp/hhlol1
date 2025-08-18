@@ -9,7 +9,10 @@ const multer = require('multer');
 const crypto = require('crypto');
 
 const app = express();
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(cors({ origin: [process.env.PUBLIC_SITE_ORIGIN].filter(Boolean) }));
 app.use(express.json({ limit: '2mb' }));
 app.use(rateLimit({ windowMs: 15*60*1000, max: 600 }));
