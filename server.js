@@ -34,7 +34,11 @@ function saveRecords(recs) {
 }
 
 const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
-const normalize = (s='') => String(s).replace(/[٠-٩]/g, d => arabicDigits.indexOf(d)).replace(/\s+/g,'').trim();
+const normalize = (s='') => {
+  s = String(s).replace(/[٠-٩]/g, d => arabicDigits.indexOf(d)); // يحول الأرقام العربية لإنجليزية
+  s = s.replace(/\D+/g, ''); // يحذف أي شيء غير رقم (مسافات، - ، . إلخ)
+  return s.trim();
+};
 
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, STORAGE_DIR),
@@ -80,14 +84,30 @@ app.post('/api/certificates', upload.single('pdf'), (req, res) => {
 });
 
 // API: lookup (يتحقق من بيانات الهوية + التسلسلي)
+// API: lookup (يتحقق من بيانات الهوية + التسلسلي)
 app.post('/api/lookup', (req, res) => {
-  // يدعم أكثر من اسم للحقل (id, identity, nid...) ونفس الشي للتسلسلي
+  // يقبل أكثر من اسم محتمل للحقلين
   const nationalId = normalize(
     req.body?.nationalId || req.body?.id || req.body?.identity || req.body?.iqama || req.body?.nid
   );
   const serial = normalize(
     req.body?.serial || req.body?.sn || req.body?.code || req.body?.certificateSerial
   );
+
+  if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const recs = loadRecords();
+  const rec = recs.find(r => r.nationalId === nationalId && r.serial === serial && r.active);
+  if (!rec) return res.json({ exists: false });
+
+  const token = Buffer.from(JSON.stringify({
+    id: rec.id, ts: Date.now(), nonce: crypto.randomBytes(6).toString('hex')
+  })).toString('base64url');
+
+  const base = (process.env.SELF_BASE_URL || '').replace(/\/$/, '');
+  const url = `${base}/files/${rec.id}?t=${encodeURIComponent(token)}`;
+  res.json({ exists: true, downloadUrl: url });
+});
 
   if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
 
@@ -189,6 +209,22 @@ app.post('/delete-user', express.json(), (req, res) => {
   saveRecords(recs);
   res.json({ ok: true });
 });
+// Debug Routes (للاختبار فقط)
+app.get('/users', (req, res) => {
+  res.json(loadRecords().filter(r => r.active).map(r => ({
+    nationalId: r.nationalId,
+    serial: r.serial,
+    pdfKey: r.pdfKey
+  })));
+});
+
+app.post('/debug/echo', (req, res) => {
+  const raw = req.body || {};
+  const nationalId = normalize(raw.nationalId || raw.id || raw.identity || raw.iqama || raw.nid);
+  const serial     = normalize(raw.serial || raw.sn || raw.code || raw.certificateSerial);
+  res.json({ raw, normalized: { nationalId, serial } });
+});
+
 
 // --- Static: keep your original frontend untouched ---
 const STATIC_DIR = path.join(__dirname, 'public'); // project root
