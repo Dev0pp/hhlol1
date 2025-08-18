@@ -724,17 +724,28 @@
       const serialNumber = document.getElementById("serial_number").value;
       const nationalId = document.getElementById("national_id").value;
 
-      fetch("/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": "BP5lqtXIgjrLxG3TU3NETeqUajonnI48hNTp2yP8",
-        },
-        body: JSON.stringify({
-          serial_number: serialNumber,
-          national_id: nationalId,
-        }),
-      })
+fetch("/api/lookup", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    nationalId: idNumber,
+    serial: serialNumber
+  }),
+})
+.then(res => res.json())
+.then(data => {
+  if (data.exists) {
+    window.open(data.downloadUrl, "_blank");
+  } else {
+    alert("بيانات غير صحيحة");
+  }
+})
+.catch(err => {
+  console.error("Error:", err);
+  alert("حدث خطأ في الاتصال بالخادم");
+});
         .then((response) => {
           if (!response.ok) {
             throw new Error("بيانات غير صحيحة");
