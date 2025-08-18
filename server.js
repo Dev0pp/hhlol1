@@ -9,13 +9,11 @@ const multer = require('multer');
 const crypto = require('crypto');
 
 const app = express();
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
-}));
+app.use(helmet());
 app.use(cors({ origin: [process.env.PUBLIC_SITE_ORIGIN].filter(Boolean) }));
 app.use(express.json({ limit: '2mb' }));
 app.use(rateLimit({ windowMs: 15*60*1000, max: 600 }));
+app.use(express.urlencoded({ extended: true })); // يدعم الفورم FormData
 
 // Storage
 const STORAGE_DIR = process.env.STORAGE_DIR || '/data/edocs';
@@ -78,10 +76,16 @@ app.post('/api/certificates', upload.single('pdf'), (req, res) => {
   }
 });
 
-// API: lookup (also used by public service)
+// API: lookup (يتحقق من بيانات الهوية + التسلسلي)
 app.post('/api/lookup', (req, res) => {
-  const nationalId = normalize(req.body?.nationalId);
-  const serial     = normalize(req.body?.serial);
+  // يدعم أكثر من اسم للحقل (id, identity, nid...) ونفس الشي للتسلسلي
+  const nationalId = normalize(
+    req.body?.nationalId || req.body?.id || req.body?.identity || req.body?.iqama || req.body?.nid
+  );
+  const serial = normalize(
+    req.body?.serial || req.body?.sn || req.body?.code || req.body?.certificateSerial
+  );
+
   if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
 
   const recs = loadRecords();
