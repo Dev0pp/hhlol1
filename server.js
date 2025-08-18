@@ -86,7 +86,6 @@ app.post('/api/certificates', upload.single('pdf'), (req, res) => {
 // API: lookup (يتحقق من بيانات الهوية + التسلسلي)
 // API: lookup (يتحقق من بيانات الهوية + التسلسلي)
 app.post('/api/lookup', (req, res) => {
-  // يقبل أكثر من اسم محتمل للحقلين
   const nationalId = normalize(
     req.body?.nationalId || req.body?.id || req.body?.identity || req.body?.iqama || req.body?.nid
   );
@@ -107,7 +106,7 @@ app.post('/api/lookup', (req, res) => {
   const base = (process.env.SELF_BASE_URL || '').replace(/\/$/, '');
   const url = `${base}/files/${rec.id}?t=${encodeURIComponent(token)}`;
   res.json({ exists: true, downloadUrl: url });
-});
+}); // ← إغلاق واحد فقط
 
   if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
 
@@ -194,9 +193,9 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 // 3) حذف مستخدم (والملف إن وُجد)
-app.post('/delete-user', express.json(), (req, res) => {
-  const nationalId = normalize(req.body?.id);
-  const serial     = normalize(req.body?.serial);
+app.post('/delete-user', (req, res) => {
+  const nationalId = normalize(req.body?.id || req.body?.nationalId || req.body?.identity || req.body?.iqama || req.body?.nid);
+  const serial     = normalize(req.body?.serial || req.body?.sn || req.body?.code || req.body?.certificateSerial);
   if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
 
   const recs = loadRecords();
@@ -208,23 +207,18 @@ app.post('/delete-user', express.json(), (req, res) => {
   recs.splice(idx, 1);
   saveRecords(recs);
   res.json({ ok: true });
-});
-// Debug Routes (للاختبار فقط)
+
+}); // ← إغلاق واحد فقط
 app.get('/users', (req, res) => {
-  res.json(loadRecords().filter(r => r.active).map(r => ({
-    id:   r.nationalId,   // ← الواجهة تقرأه كـ id
-    serial: r.serial,
-    file: r.pdfKey        // ← الواجهة تستخدمه لزر "عرض"
-  })));
-});
-
-app.post('/debug/echo', (req, res) => {
-  const raw = req.body || {};
-  const nationalId = normalize(raw.nationalId || raw.id || raw.identity || raw.iqama || raw.nid);
-  const serial     = normalize(raw.serial || raw.sn || raw.code || raw.certificateSerial);
-  res.json({ raw, normalized: { nationalId, serial } });
-});
-
+  const users = loadRecords()
+    .filter(r => r.active)
+    .map(r => ({
+      id: r.nationalId,     // ← اسم الحقل الذي تتوقعه الواجهة
+      serial: r.serial,
+      file: r.pdfKey        // ← يستخدم لزر "عرض"
+    }));
+  res.json(users);
+}); // ← إغلاق واحد فقط
 
 // --- Static: keep your original frontend untouched ---
 const STATIC_DIR = path.join(__dirname, 'public'); // project root
