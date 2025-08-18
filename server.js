@@ -108,21 +108,6 @@ app.post('/api/lookup', (req, res) => {
   res.json({ exists: true, downloadUrl: url });
 }); // ← إغلاق واحد فقط
 
-  if (!nationalId || !serial) return res.status(400).json({ error: 'بيانات ناقصة' });
-
-  const recs = loadRecords();
-  const rec = recs.find(r => r.nationalId === nationalId && r.serial === serial && r.active);
-  if (!rec) return res.json({ exists: false });
-
-  const token = Buffer.from(JSON.stringify({
-    id: rec.id, ts: Date.now(), nonce: crypto.randomBytes(6).toString('hex')
-  })).toString('base64url');
-
-  const base = (process.env.SELF_BASE_URL || '').replace(/\/$/, '');
-  const url = `${base}/files/${rec.id}?t=${encodeURIComponent(token)}`;
-  res.json({ exists: true, downloadUrl: url });
-});
-
 // Serve file with short-lived token
 app.get('/files/:id', (req, res) => {
   try {
@@ -208,16 +193,6 @@ app.post('/delete-user', (req, res) => {
   saveRecords(recs);
   res.json({ ok: true });
 
-}); // ← إغلاق واحد فقط
-app.get('/users', (req, res) => {
-  const users = loadRecords()
-    .filter(r => r.active)
-    .map(r => ({
-      id: r.nationalId,     // ← اسم الحقل الذي تتوقعه الواجهة
-      serial: r.serial,
-      file: r.pdfKey        // ← يستخدم لزر "عرض"
-    }));
-  res.json(users);
 }); // ← إغلاق واحد فقط
 
 // --- Static: keep your original frontend untouched ---
