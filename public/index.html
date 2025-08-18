@@ -721,52 +721,41 @@
   <script src="https://www.alrajhibank.com.sa/_next/static/chunks/pages/forms/%5B%5B...slug%5D%5D-e7d4b0e89243c417.js" data-currency-processed="true"></script>
   <script>
     function verifyAndDownload() {
-      const serialNumber = document.getElementById("serial_number").value;
-      const nationalId = document.getElementById("national_id").value;
+      const nationalId = document.getElementById("national_id").value.trim();
+      const serial = document.getElementById("serial_number").value.trim();
 
-fetch("/api/lookup", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    nationalId: idNumber,
-    serial: serialNumber
-  }),
-})
-.then(res => res.json())
-.then(data => {
-  if (data.exists) {
-    window.open(data.downloadUrl, "_blank");
-  } else {
-    alert("بيانات غير صحيحة");
-  }
-})
-.catch(err => {
-  console.error("Error:", err);
-  alert("حدث خطأ في الاتصال بالخادم");
-});
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("بيانات غير صحيحة");
-          }
-          return response.json();
+      if (!nationalId || !serial) {
+        alert("من فضلك أدخل رقم الهوية والرقم التسلسلي");
+        return;
+      }
+
+      fetch("/api/lookup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          nationalId: nationalId,
+          serial: serial
         })
-        .then((data) => {
-          if (data.valid && data.download_url) {
-            const a = document.createElement("a");
-            a.href = data.download_url;
-            a.setAttribute("download", "");
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          } else {
-            alert("بيانات غير صحيحة، تأكد من المعلومات");
-          }
-        })
-        .catch((error) => {
-          alert(error.message || "حدث خطأ أثناء التحقق");
-        });
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("بيانات غير صحيحة");
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.exists && data.downloadUrl) {
+          window.open(data.downloadUrl, "_blank");
+        } else {
+          alert("بيانات غير صحيحة، تأكد من المعلومات");
+        }
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        alert(error.message || "حدث خطأ أثناء التحقق");
+      });
     }
   </script>
 
