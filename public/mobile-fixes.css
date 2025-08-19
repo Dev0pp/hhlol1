@@ -1,0 +1,20 @@
+/* إيقاف تكبير النص التلقائي على iOS */
+html, body { -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }
+
+/* منع تكبير المتصفح عند لمس الحقول (iOS يكبر لو الخط < 16px) */
+input, select, textarea, button { font-size: 16px !important; }
+
+/* مساحة للشعار حتى لا يركب فوق الحقول على الشاشات الصغيرة */
+@media (max-width: 480px) {
+  .arb-logo img { max-width: 140px !important; height: auto !important; }
+  #edocument-form input { width: 100% !important; }
+  header, .arb-header-contents { overflow: hidden; }
+}
+
+/* تصغير وتثبيت شارة reCAPTCHA في الركن */
+.grecaptcha-badge {
+  transform: scale(0.85);
+  transform-origin: bottom right;
+  right: 8px !important;
+  bottom: 8px !important;
+}
