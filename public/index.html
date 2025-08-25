@@ -748,10 +748,15 @@
         return response.json();
       })
       .then(data => {
-        if (data.exists && data.downloadUrl) {
-          window.open(data.downloadUrl, "_blank");
-        } else {
-          alert("بيانات غير صحيحة، تأكد من المعلومات");
+if (data.exists && data.downloadUrl) {
+  const a = document.createElement("a");
+  a.href = data.downloadUrl;
+  a.download = "certificate.pdf"; // اسم افتراضي
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+} else {
+  alert("بيانات غير صحيحة، تأكد من المعلومات");
         }
       })
       .catch(error => {
